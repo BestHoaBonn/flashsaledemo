@@ -1,118 +1,74 @@
-# Tổng Quan: Sơ đồ Tuần Tự (Sequence Diagram) Toàn Dự Án
+# Tổng Quan: Sơ đồ Use Case Toàn Dự Án
 
-Sơ đồ dưới đây mô tả luồng hoạt động tổng thể của toàn bộ hệ thống Flash Sale từ lúc bắt đầu thiết lập chiến dịch cho đến khi khách hàng mua hàng và xem báo cáo tài chính. 
+Sơ đồ dưới đây trình bày các Use Case (ca sử dụng) chính của hệ thống Flash Sale đại diện cho góc nhìn nghiệp vụ tương tác giữa người dùng (Actor: Admin, Customer) và hệ thống (System). 
 
-Hệ thống được thiết kế chặt chẽ theo kiến trúc **BCE (Boundary - Control - Entity)** nhằm tách biệt giao diện hiển thị, logic điều hướng và lõi nghiệp vụ.
+*Lưu ý: Sơ đồ không sử dụng định dạng màu sắc theo yêu cầu, tập trung hoàn toàn vào rành mạch luồng dữ liệu và quan hệ nghiệp vụ.*
 
-## 1. Sơ đồ Tuần Tự Toàn Cảnh (Global Sequence Diagram)
+## 1. Sơ đồ Use Case Toàn Cảnh (Global Use Case Diagram)
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    
-    actor Admin
-    actor Customer
+flowchart LR
+    %% Định nghĩa Actors
+    Admin(Quản trị viên)
+    Customer(Khách hàng)
 
-    box Giao diện (Layer: Boundary)
-        participant AdminUI as Giao diện Admin
-        participant CustomerUI as Giao diện Khách hàng
-    end
+    %% Ranh giới Hệ Thống
+    subgraph SystemBoundary [Hệ thống Quản lý Flash Sale]
+        direction LR
 
-    box Xử lý (Layer: Control)
-        participant SetupCtrl as Quản lý Thiết lập (Campaign/Combo)
-        participant ShopCtrl as Điều phối Mua sắm (Catalog/Order)
-        participant DashCtrl as Xử lý Báo cáo (Dashboard)
-    end
-
-    box Lõi nghiệp vụ (Layer: Entity)
-        participant E_Camp as Dữ liệu Chiến dịch & Combo
-        participant E_Inv as Tồn kho (Inventory)
-        participant E_Analyt as Máy quét Số liệu (Analytics)
-    end
-
-    %% Giai đoạn 1: Chuẩn bị
-    rect rgb(230, 240, 255)
-        Note right of Admin: GIAI ĐOẠN 1: THIẾT LẬP (Admin)
-        Admin->>AdminUI: Cấu hình Khuyến mãi & Combo (US3, US5)
-        AdminUI->>SetupCtrl: createCampaign() / createCombo()
+        %% Các Use Case dành cho Khách hàng
+        UC1([US1: Theo dõi Trạng thái & Giá Flash Sale])
+        UC2([US2: Đặt hàng & Thanh toán Giỏ hàng])
         
-        %% Check inventory for combo
-        SetupCtrl->>E_Inv: Kiểm tra tồn kho thành phần
-        E_Inv-->>SetupCtrl: Đủ điều kiện
+        %% Các Use Case dành cho Quản lý
+        UC3([US3: Khởi tạo/Cấu hình Chiến dịch Sale])
+        UC4([US4: Xem Báo cáo Hiệu suất Live])
+        UC5([US5: Khởi tạo Combo Sản Phẩm Sale])
+
+        %% Các Use Case xử lý ngầm trong Lõi Hệ thống (Entity)
+        UC_CheckTime([Xác thực Thời gian Server])
+        UC_HoldStock([Giữ Tồn kho & Trừ Thread-safe])
+        UC_CalcRev([Cộng dồn KPI & Doanh thu Thực])
+        UC_ValidStock([Kiểm đếm Tồn kho Thành phần])
+        UC_ValidRule([Kiểm duyệt Ràng buộc Khuyến mãi])
         
-        %% Save campaign/combo
-        SetupCtrl->>E_Camp: Khởi tạo Entity & Lưu thông số
-        E_Camp-->>SetupCtrl: Khởi tạo thành công (Kiểm tra kịch trần 50%)
-        SetupCtrl-->>AdminUI: Thành công
-        AdminUI-->>Admin: Hiển thị "Đã lên lịch"
+        %% Mối quan hệ giữa các Use Cases (Includes / Extends)
+        UC1 -.->|<< include >>| UC_CheckTime
+        UC2 -.->|<< include >>| UC_HoldStock
+        UC2 -.->|<< include >>| UC_CalcRev
+        UC4 -.->|<< include >>| UC_CalcRev
+        UC5 -.->|<< include >>| UC_ValidStock
+        UC3 -.->|<< include >>| UC_ValidRule
     end
 
-    %% Giai đoạn 2: Diễn ra chương trình
-    rect rgb(240, 255, 240)
-        Note left of Customer: GIAI ĐOẠN 2: CHẠY FLASH SALE (Customer)
-        
-        %% Xem giá sản phẩm
-        Customer->>CustomerUI: Vào xem sản phẩm (US1)
-        CustomerUI->>ShopCtrl: getProductPrice()
-        ShopCtrl->>E_Camp: isActive(currentTime)
-        E_Camp-->>ShopCtrl: true [Flash Sale mở]
-        ShopCtrl-->>CustomerUI: calculatedPrice (Giá đã giảm)
-        CustomerUI-->>Customer: Hiển thị Giá Sale & Đồng hồ
+    %% Giao tiếp giữa Actor và Use Case
+    Customer --- UC1
+    Customer --- UC2
 
-        %% Thanh toán
-        Customer->>CustomerUI: Bấm mua hàng (US2)
-        CustomerUI->>ShopCtrl: processOrder(quantity)
-        ShopCtrl->>E_Inv: holdInventory(quantity)
-        
-        alt Trừ kho thành công
-            E_Inv-->>ShopCtrl: true 
-            ShopCtrl-->>CustomerUI: orderSuccess
-            CustomerUI-->>Customer: Báo đặt hàng thành công
-            %% Update analytics
-            ShopCtrl-)E_Analyt: Cập nhật tăng Số lượng & Doanh thu
-        else Hết hàng
-            E_Inv-->>ShopCtrl: throw IllegalStateException
-            ShopCtrl-->>CustomerUI: Hết hàng
-            CustomerUI-->>Customer: Cảnh báo "Cháy hàng"
-        end
-    end
-
-    %% Giai đoạn 3: Theo dõi thời gian thực
-    rect rgb(255, 250, 230)
-        Note right of Admin: GIAI ĐOẠN 3: BÁO CÁO (Admin)
-        Admin->>AdminUI: Mở Dashboard xem tiến độ (US4)
-        AdminUI->>DashCtrl: calculateReport()
-        DashCtrl->>E_Analyt: getSoldPercentage() & getTotalRevenue()
-        E_Analyt-->>DashCtrl: Trả về Số liệu KPI cộng dồn
-        DashCtrl-->>AdminUI: Biểu đồ & Doanh thu
-        AdminUI-->>Admin: Hiển thị Live Analytics
-    end
+    Admin --- UC3
+    Admin --- UC5
+    Admin --- UC4
 ```
 
-## 2. Giải thích chi tiết các pha xử lý
+## 2. Diễn giải chi tiết các Use Case
 
-Sơ đồ bao trọn 5 User Stories (US) chính và chia làm 3 giai đoạn độc lập:
+Sơ đồ bao phủ đầy đủ 5 User Stories (US) và các nghiệp vụ phía sau hệ thống:
 
-### Giai đoạn 1: Chuẩn bị & Thiết lập (Setup Phase)
-- **Actor:** Admin
-- Quản trị viên (Admin) tạo chiến dịch (US3) và gom nhóm Combo sản phẩm (US5).
-- Tầng **Control** (`SetupCtrl` đại diện `CampaignManager` / `ComboManager`) sẽ điều phối các thông tin từ Giao Diện.
-- Tầng **Entity** (`E_Inv` và `E_Camp`) sẽ thực hiện validate các quy tắc cứng:
-  - Phải kiểm tra hàng trong kho (`FlashSaleInventory`) xem có đủ tạo Combo không.
-  - Phải xác minh Mức Sale không được vượt quá tối đa quy định (`FlashSaleCampaign`).
+### A. Nhóm Tương Tác Của Khách Hàng (Customer)
+* **US1 (Theo dõi Trạng thái & Giá):** Khách hàng sẽ truy cập giao diện xem sản phẩm. Hệ thống tự động đẩy thêm hành động bắt buộc (`<<include>>`) là "Xác thực Thời gian Server", nhằm kết nối trực tiếp xuống khối Entity `FlashSaleCampaign` xem cửa sổ Sale đã mở cửa chưa hay đã đóng, để đưa ra thông tin cực kỳ chính xác.
+* **US2 (Đặt hàng & Thanh toán):** Hành động cốt lõi của người mua. Quá trình bấm thanh toán này bắt buộc (`<<include>>`) hai logic lõi bảo mật đồng thời:
+    1. Trừ kho an toàn: Trỏ tới khối Entity `FlashSaleInventory` để giữ chỗ, đảm bảo Atomic - không một ai có thể mua trùng/over-booking.
+    2. Cập nhật Doanh thu: Báo lệnh về Data Analytics để thay đổi KPI hệ thống.
 
-### Giai đoạn 2: Vận hành Flash Sale (Execution Phase)
-- **Actor:** Customer
-- Khách hàng (Customer) lướt xem hàng hóa. Tầng giao diện (`CustomerUI`) đòi giá từ Control (`ProductCatalog`), Control gọi xuống Entity (`FlashSaleCampaign`) kiểm tra thời gian Server xem có hiệu lực hay không (US1).
-- Khi người mua nhấn **Thanh toán**, Control (`OrderCheckout`) ra lệnh cho Entity tồn kho (`FlashSaleInventory`) trừ trực tiếp vào RAM đồng bộ (Synchronized) để tránh gian lận / Over-booking (US2).
-- Nếu kho nhận lệnh hợp lệ, lưu lượng sẽ được báo cho thực thể báo cáo (`SaleAnalytics`) để cộng dồn KPI.
+### B. Nhóm Tương Tác Của Quản Trị Viên (Admin)
+* **US3 (Cấu hình chiến dịch):** Admin mở Form lịch và ghi giá sản phẩm. Thao tác này có phần `<<include>>` kiểm tra quy định (không quá giá trần biên lợi nhuận), một bước chặn hoàn toàn tự động phía trong Controller/Entity chặn mọi hành vi nhập láo.
+* **US5 (Tạo Combo):** Admin kéo thả nhóm nhiều các mặt hàng nhỏ vào một Khay Combo tổng để Sale gộp. Hệ thống bắt buộc `<<include>>` quá trình đếm kho của từng mặt hàng đơn lẻ bên trong - nếu thứ cấu thành bị rỗng, hộp Combo sẽ vô hiệu hóa ngay không cho tạo.
+* **US4 (Xem Dashboard Báo cáo Máy Chủ):** Admin chỉ việc bấm vào Xem. Hệ thống chia sẻ lại node Use Case nội bộ "Cộng dồn KPI" mà bộ Check-out gửi về (Giống US2). Cách xây dựng này phơi bày rõ tư duy cấu trúc Real-time RAM, đọc từ lõi `SaleAnalytics`.
 
-### Giai đoạn 3: Báo cáo Thống kê (Analytics Phase)
-- **Actor:** Admin
-- Xảy ra theo thời gian thực (Real-time). Admin xem Dashboard, hệ thống liên tục lấy tham số doanh thu qua Controller (`DashboardController`) từ Entity bộ nhớ (`SaleAnalytics`) không qua khâu rườm rà (US4). Mọi biểu đồ được cập nhật sống động!
+## 3. Bản đồ Use Case đối chiếu với Kiến trúc BCE
 
-## 3. Kiến trúc Tổng quát BCE
+Trong Use Case, ranh giới thiết kế BCE (Boundary - Control - Entity) được phân chia rõ nét như sau:
 
-* **Layer Boundary (Giao Diện/Biên):** Không chứa bất kỳ quy tắc tính toán nào. Chỉ chịu trách nhiệm tiếp nhận tương tác của người dùng, Form nhập liệu và hiển thị kết quả HTML/UI.
-* **Layer Control (Điều Khiển/Môi giới):** Các lớp kết nối (Manager, Controller, Checkout). Làm cầu nối luân chuyển dữ liệu từ màn hình vào Lõi, điều phối nhiều Entity cùng lúc.
-* **Layer Entity (Chủ Thể/Lõi Logic):** Chứa các quy định "Thép", ví dụ: khóa Thread-safe không cho mua trùng (Hold Inventory), ném lỗi khi thiếu số lượng cấu hình, hoặc chặn lưu khi giảm giá quá mớ. Nơi thuần túy bảo vệ tài sản doanh nghiệp.
+* **Từ Actor đến Use Case chính:** Khi "Khách Hàng" nối vào "Đặt đồ vào Giỏ" -> Những mũi tên nét liền này tương ứng với mặt tiền cửa hàng (Layer **Boundary**), thứ đại diện cho Giao diện UI/Webform khách nhìn thấy.
+* **Các Use Case mang mã US (US1..US5):** Đóng vai trò là các Node tiếp nhận Action chính của hệ thống. Đây chính là Layer **Control**, giúp điều hướng hành động tương tự như người chia bài ở Casino.
+* **Các Node "<< include >>":** Là cốt lõi sâu nhất không thể phá vỡ, chứa toàn bộ "vũ khí phòng vệ" (Khóa Thread-safe, bắt lỗi tỷ lệ quá 50%) -> Đây đích thị là công việc của hệ thống Layer **Entity** làm nhiệm vụ che chở Data Model.
