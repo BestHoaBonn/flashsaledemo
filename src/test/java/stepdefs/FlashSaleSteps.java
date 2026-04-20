@@ -41,6 +41,8 @@ public class FlashSaleSteps {
 
     // =======================================================
     // NGHIỆP VỤ US1: Hiển thị trạng thái Flash Sale
+    // [LUỒNG KỸ THUẬT]:
+    // Boundary (CustomerBoundary) -> Control (ProductCatalog) -> Entity (FlashSaleCampaign)
     // =======================================================
     @Cho("chiến dịch {string} đang diễn ra, kết thúc lúc {string}")
     public void startActiveCampaign(String name, String time) {
@@ -85,6 +87,9 @@ public class FlashSaleSteps {
 
     // =======================================================
     // NGHIỆP VỤ US2: Xử lý tồn kho và thanh toán
+    // [LUỒNG KỸ THUẬT]: 
+    // Boundary (CustomerBoundary) -> Control (OrderCheckout) -> Entity (FlashSaleInventory)
+    // Đặc tính: Synchronized Atomic Deduction (Thread-safe)
     // =======================================================
     @Cho("kho Flash Sale còn {string} sản phẩm")
     public void initInventory(String qty) {
@@ -130,6 +135,9 @@ public class FlashSaleSteps {
 
     // =======================================================
     // NGHIỆP VỤ US3: Thiết lập chiến dịch (Admin)
+    // [LUỒNG KỸ THUẬT]:
+    // Boundary (AdminBoundary) -> Control (CampaignManager) -> Entity (FlashSaleCampaign)
+    // Đặc tính: Constructor Guard Logic
     // =======================================================
     @Cho("Quản lý đang ở form tạo chiến dịch")
     public void adminOnCreateForm() {
@@ -177,6 +185,9 @@ public class FlashSaleSteps {
 
     // =======================================================
     // NGHIỆP VỤ US4: Báo cáo hiệu quả thời gian thực
+    // [LUỒNG KỸ THUẬT]:
+    // Boundary (AdminBoundary) -> Control (DashboardController) -> Entity (SaleAnalytics)
+    // Đặc tính: Division-by-Zero Protection
     // =======================================================
     @Cho("chiến dịch đang diễn ra và có đơn hàng thành công")
     public void setupAnalyticsHappy() {
@@ -221,6 +232,9 @@ public class FlashSaleSteps {
 
     // =======================================================
     // NGHIỆP VỤ US5: Quản lý Sản phẩm và Combo Sale
+    // [LUỒNG KỸ THUẬT]:
+    // Boundary (AdminBoundary) -> Control (ComboManager) -> Entity (FlashSaleCombo)
+    // Đặc tính: Weakest Link Stock Logic
     // =======================================================
     @Cho("Quản lý chọn {string} và {string}")
     public void makeComboSelection(String p1, String p2) {

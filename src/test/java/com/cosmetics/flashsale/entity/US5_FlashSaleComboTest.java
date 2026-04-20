@@ -7,6 +7,13 @@ import static org.junit.Assert.*;
 
 public class US5_FlashSaleComboTest {
 
+    /**
+     * [ĐỐI SOÁT NGHIỆP VỤ]
+     * User Story: US5 - Quản lý Sản phẩm và Combo Sale
+     * Kịch bản (Scenario): 5.1 - Tạo Combo hợp lệ
+     * Luồng xử lý (Path): Happy Path (Luồng thành công)
+     * MỤC TIÊU: Xác nhận khả năng gộp nhóm thực thể và tính toán giá trị/số lượng khả dụng của Combo dựa trên thành phần.
+     */
     @Test
     public void testCreateCombo_HappyPath() {
         // Cho chạy danh sách sản phẩm gồm "Son MAC" (tồn 10 đơn vị) và "Nước hoa" (tồn 5 đơn vị)
@@ -25,6 +32,13 @@ public class US5_FlashSaleComboTest {
         assertEquals(5, combo.getAvailableComboQuantity()); // Thấp nhất là 5
     }
 
+    /**
+     * [ĐỐI SOÁT NGHIỆP VỤ]
+     * User Story: US5 - Quản lý Sản phẩm và Combo Sale
+     * Kịch bản (Scenario): 5.2 - Thêm sản phẩm đã hết hàng vào Combo
+     * Luồng xử lý (Path): Unhappy Path (Thành phần Combo hết kho)
+     * MỤC TIÊU: Đảm bảo nguyên tắc "Transactional Consistency" - Chặn đứng việc tạo Combo nếu có linh kiện rỗng hàng.
+     */
     @Test(expected = IllegalStateException.class)
     public void testCreateCombo_UnhappyPath_OutOfStock() {
         // Rút sạch số lượng Nước hoa khỏi kho về ngưỡng 0
@@ -33,7 +47,6 @@ public class US5_FlashSaleComboTest {
         
         List<FlashSaleInventory> products = Arrays.asList(p1, p2);
         // Quản lý cố tình vón món Nước hoa vào Combo, máy chủ test đo lường xem hệ thống có tung còi báo lỗi không
-        // Throw exception mong muốn: Sản phẩm Nước hoa Chanel N°5 không đủ tồn kho để tạo Combo
         new FlashSaleCombo("Combo Lỗi", products, 2000000.0, 30.0);
     }
 }
