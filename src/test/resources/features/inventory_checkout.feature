@@ -13,3 +13,8 @@ Tính năng: US2 - Xử lý tồn kho và thanh toán
     Cho khách hàng đang ở trang thanh toán nhưng kho Flash Sale vừa về "0"
     Khi khách nhấn "Xác nhận đặt hàng"
     Thì hệ thống báo lỗi "Sản phẩm đã hết suất Flash Sale" và cập nhật giỏ hàng về giá gốc
+
+  Kịch bản: Thanh toán với số lượng không hợp lệ (Unhappy Path)
+    Cho kho Flash Sale còn "10" sản phẩm
+    Khi khách hàng thêm "0" sản phẩm và thanh toán
+    Thì hệ thống báo lỗi "Số lượng mua phải lớn hơn 0" và cập nhật giỏ hàng về giá gốc

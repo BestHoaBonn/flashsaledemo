@@ -24,7 +24,10 @@ public class FlashSaleInventory {
     }
 
     public synchronized boolean holdInventory(int quantity) {
-        if (availableQuantity < quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Số lượng mua phải lớn hơn 0");
+        }
+        if (quantity > availableQuantity) {
             throw new IllegalStateException("Sản phẩm đã hết suất Flash Sale");
         }
         availableQuantity -= quantity;

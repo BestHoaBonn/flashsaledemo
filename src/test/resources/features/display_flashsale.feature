@@ -13,3 +13,8 @@ Tính năng: US1 - Hiển thị trạng thái Flash Sale trên sản phẩm
     Cho chiến dịch "Siêu Sale" đã kết thúc
     Khi khách hàng xem sản phẩm "Son MAC Ruby Woo"
     Thì hệ thống hiển thị giá gốc "1.500.000 VNĐ" và không có đồng hồ đếm ngược
+
+  Kịch bản: Xem sản phẩm khi chiến dịch chưa bắt đầu (Unhappy Path)
+    Cho chiến dịch "Sale Hè" sắp diễn ra
+    Khi khách hàng xem sản phẩm "Son MAC Ruby Woo"
+    Thì hệ thống hiển thị giá gốc và nhãn "Sắp diễn ra"

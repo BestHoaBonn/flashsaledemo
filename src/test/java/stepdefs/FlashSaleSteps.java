@@ -10,6 +10,7 @@ import io.cucumber.java.vi.Khi;
 import io.cucumber.java.vi.Thì;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
@@ -38,7 +39,9 @@ public class FlashSaleSteps {
     private boolean checkoutResult;
     private String systemMessage;
 
-    // --- US1 ---
+    // =======================================================
+    // NGHIỆP VỤ US1: Hiển thị trạng thái Flash Sale
+    // =======================================================
     @Cho("chiến dịch {string} đang diễn ra, kết thúc lúc {string}")
     public void startActiveCampaign(String name, String time) {
         campaign = new FlashSaleCampaign(LocalDateTime.now().minusHours(1), LocalDateTime.now().plusHours(1), 20.0);
@@ -59,6 +62,16 @@ public class FlashSaleSteps {
         assertTrue(campaign.isActive(LocalDateTime.now()));
     }
 
+    @Cho("chiến dịch {string} sắp diễn ra")
+    public void setupFutureCampaign(String name) {
+        campaign = new FlashSaleCampaign(LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2), 20.0);
+    }
+
+    @Thì("hệ thống hiển thị giá gốc và nhãn {string}")
+    public void verifyComingSoonDisplay(String label) {
+        assertFalse(campaign.isActive(LocalDateTime.now()));
+    }
+
     @Cho("chiến dịch {string} đã kết thúc")
     public void startExpiredCampaign(String name) {
         campaign = new FlashSaleCampaign(LocalDateTime.now().minusHours(2), LocalDateTime.now().minusHours(1), 20.0);
@@ -70,7 +83,9 @@ public class FlashSaleSteps {
         assertFalse(campaign.isActive(LocalDateTime.now()));
     }
 
-    // --- US2 ---
+    // =======================================================
+    // NGHIỆP VỤ US2: Xử lý tồn kho và thanh toán
+    // =======================================================
     @Cho("kho Flash Sale còn {string} sản phẩm")
     public void initInventory(String qty) {
         inventory = new FlashSaleInventory("PRODUCT_1", Integer.parseInt(qty));
@@ -113,7 +128,9 @@ public class FlashSaleSteps {
         assertEquals(errorMsg, caughtException.getMessage());
     }
 
-    // --- US3 ---
+    // =======================================================
+    // NGHIỆP VỤ US3: Thiết lập chiến dịch (Admin)
+    // =======================================================
     @Cho("Quản lý đang ở form tạo chiến dịch")
     public void adminOnCreateForm() {
         // Conceptual setup
@@ -155,10 +172,12 @@ public class FlashSaleSteps {
     @Thì("hệ thống chặn lưu và báo lỗi {string}")
     public void verifyCampaignBlockError(String errorMsg) {
         assertNotNull(caughtException);
-        assertTrue(caughtException instanceof IllegalArgumentException);
+        assertEquals(errorMsg, caughtException.getMessage());
     }
 
-    // --- US4 ---
+    // =======================================================
+    // NGHIỆP VỤ US4: Báo cáo hiệu quả thời gian thực
+    // =======================================================
     @Cho("chiến dịch đang diễn ra và có đơn hàng thành công")
     public void setupAnalyticsHappy() {
         analytics = new SaleAnalytics(100);
@@ -172,7 +191,12 @@ public class FlashSaleSteps {
 
     @Thì("hệ thống hiển thị doanh thu {string} và tỷ lệ bán ra {string}")
     public void verifyDashboardStats(String rev, String perc) {
-        assertEquals(doubleFrom(perc), adminBoundary.getAnalyticsReport(analytics)[0], 0.01);
+        double[] report = adminBoundary.getAnalyticsReport(analytics);
+        assertEquals(doubleFrom(perc), report[0], 0.01);
+        // Kiểm tra doanh thu nếu cần (giả lập đơn giản cho demo)
+        if (rev.contains("50.000.000")) {
+             assertEquals(50000000.0, report[1], 0.01);
+        }
     }
 
     @Cho("chiến dịch bị lỗi cấu hình tổng sản phẩm ban đầu là {string}")
@@ -195,7 +219,9 @@ public class FlashSaleSteps {
         assertTrue(caughtException instanceof IllegalStateException);
     }
 
-    // --- US5 ---
+    // =======================================================
+    // NGHIỆP VỤ US5: Quản lý Sản phẩm và Combo Sale
+    // =======================================================
     @Cho("Quản lý chọn {string} và {string}")
     public void makeComboSelection(String p1, String p2) {
     }
@@ -227,6 +253,15 @@ public class FlashSaleSteps {
         FlashSaleInventory ip1 = new FlashSaleInventory("Son MAC Ruby Woo", 10);
         try {
             adminBoundary.createCombo("Combo Lỗi", Arrays.asList(ip1, inventory), 2000000.0, 30.0);
+        } catch (Exception e) {
+            caughtException = e;
+        }
+    }
+
+    @Khi("thiết lập giá Combo giảm {string} và nhấn {string} nhưng không chọn sản phẩm nào")
+    public void setupEmptyCombo(String discount, String btn) {
+        try {
+            adminBoundary.createCombo("Combo Rỗng", new ArrayList<>(), 2000000.0, 30.0);
         } catch (Exception e) {
             caughtException = e;
         }

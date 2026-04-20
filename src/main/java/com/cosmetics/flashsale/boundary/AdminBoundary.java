@@ -31,12 +31,13 @@ public class AdminBoundary {
 
     /**
      * Xuất báo cáo phân tích số liệu.
+     * 
      * @return mảng [tỷ lệ %, doanh thu]
      */
     public double[] getAnalyticsReport(SaleAnalytics analytics) {
         double perc = dashboardController.calculateSoldPercentage(analytics);
         double rev = dashboardController.getTotalRevenue(analytics);
-        return new double[]{perc, rev};
+        return new double[] { perc, rev };
     }
 
     /**

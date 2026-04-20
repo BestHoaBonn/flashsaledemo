@@ -9,6 +9,7 @@ public class CampaignManagerTest {
 
     @Test
     public void testCreateCampaign_HappyPath() {
+        // [Acceptance Test]: US3 - Scenario 3.1 (Happy Path)
         CampaignManager manager = new CampaignManager();
         LocalDateTime t1 = LocalDateTime.now();
         LocalDateTime t2 = t1.plusHours(1);

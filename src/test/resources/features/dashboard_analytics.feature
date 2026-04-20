@@ -13,3 +13,8 @@ Tính năng: US4 - Báo cáo hiệu quả thời gian thực
     Cho chiến dịch bị lỗi cấu hình tổng sản phẩm ban đầu là "0"
     Khi Quản lý mở Dashboard
     Thì hệ thống hiển thị tỷ lệ bán ra "0%" và cảnh báo "Chưa cấu hình số lượng tổng"
+
+  Kịch bản: Xem báo cáo khi chưa có giao dịch nào (Unhappy Path)
+    Cho chiến dịch bị lỗi cấu hình tổng sản phẩm ban đầu là "100"
+    Khi Quản lý mở Dashboard
+    Thì hệ thống hiển thị doanh thu "0 VNĐ" và tỷ lệ bán ra "0%"

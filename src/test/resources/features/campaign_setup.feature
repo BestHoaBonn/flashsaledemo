@@ -13,3 +13,7 @@ Tính năng: US3 - Thiết lập chiến dịch
     Cho chính sách giới hạn giảm tối đa "50%"
     Khi Quản lý nhập mức giảm "60%" và nhấn "Lưu"
     Thì hệ thống chặn lưu và báo lỗi "Mức giảm không được vượt quá 50%"
+
+  Kịch bản: Thiết lập thời gian sai (Unhappy Path)
+    Khi nhập thời gian bắt đầu "2026-04-20T12:00", kết thúc "2026-04-20T08:00" và giá giảm "20%", rồi nhấn "Lưu"
+    Thì hệ thống chặn lưu và báo lỗi "Thời gian kết thúc phải sau thời gian bắt đầu"

@@ -25,8 +25,8 @@ public class FlashSaleCampaign {
         if (discountPercent > 50.0) {
             throw new IllegalArgumentException("Mức giảm không được vượt quá 50%");
         }
-        if (startTime.isAfter(endTime)) {
-            throw new IllegalArgumentException("Thời gian bắt đầu phải trước thời gian kết thúc");
+        if (endTime.isBefore(startTime)) {
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian bắt đầu");
         }
         this.startTime = startTime;
         this.endTime = endTime;

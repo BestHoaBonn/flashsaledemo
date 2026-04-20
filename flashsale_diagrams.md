@@ -13,31 +13,32 @@
 ```
 
 ### 2. Sơ đồ Kịch Bản (Sequence Diagram)
-> **Giải thích:** Trình tự chi tiết hệ thống tính toán giá và trả về kết quả phụ thuộc vào chiến dịch đang Mở hay đã Tắt.
+> **Kỹ thuật:** Luồng xử lý lấy thông tin giá từ Layer Boundary qua Control tới Entity.
+
 ```mermaid
 sequenceDiagram
     autonumber
-    actor KhachHang as Khách Hàng
-    participant UI as Giao diện Mua Hàng
-    participant Control as Trình Quản lý Danh mục
-    participant Entity as Dữ liệu Chiến dịch
+    actor Customer
+    participant Boundary as Giao diện Khách - CustomerBoundary (Layer: Boundary)
+    participant Control as Trình quản lý Sản phẩm - ProductCatalog (Layer: Control)
+    participant Entity as Dữ liệu Chiến dịch - FlashSaleCampaign (Layer: Entity)
 
-    KhachHang->>UI: Mở xem trang chi tiết sản phẩm
-    UI->>Control: Yêu cầu thông tin hiển thị (Giá bán)
-    Control->>Entity: Kiểm tra giờ (Hàm isActive?)
+    Customer->>Boundary: getDisplayedPrice(campaign, productName)
+    Boundary->>Control: getProductPrice(productName)
+    Control->>Entity: isActive(currentTime)
     
     rect rgb(235, 255, 235)
-        Note right of Control: Kịch bản 1: ĐANG TRONG GIỜ FLASH SALE
-        Entity-->>Control: Trả về TRUE & Mức giảm phần trăm
-        Control-->>UI: Cấp phép hiện Giá Flash Sale
-        UI-->>KhachHang: Hiển thị ĐỒNG HỒ đếm ngược & GIÁ RẺ
+        Note right of Control: Case: Flash Sale Active
+        Entity-->>Control: return true & discountPercent
+        Control-->>Boundary: calculatedPrice (Discounted)
+        Boundary-->>Customer: Display FlashPrice & Countdown
     end
     
     rect rgb(255, 235, 235)
-        Note right of Control: Kịch bản 2: QUÁ GIỜ (HẾT HẠN)
-        Entity-->>Control: Trả về FALSE
-        Control-->>UI: Từ chối chiết khấu
-        UI-->>KhachHang: Hiển thị Giá Gốc, ẨN Đồng hồ
+        Note right of Control: Case: Flash Sale Expired
+        Entity-->>Control: return false
+        Control-->>Boundary: originalPrice
+        Boundary-->>Customer: Display OriginalPrice & Hide clock
     end
 ```
 
@@ -107,27 +108,28 @@ stateDiagram-v2
 ```
 
 ### 2. Sơ đồ Kịch Bản (Sequence Diagram)
-> **Giải thích:** Hai trường hợp khi Khách chốt deal; một là Tồn Kho cấp phép, hai là Cản lại vì hết hàng. 
+> **Kỹ thuật:** Luồng xử lý đặt hàng và trừ tồn kho an toàn (Thread-safe logic).
+
 ```mermaid
 sequenceDiagram
     autonumber
-    actor KhachHang as Khách Hàng
-    participant UI as Màn hình Thanh Toán
-    participant Control as Lệnh Đặt Hàng
-    participant Entity as Bộ Trữ Kho
+    actor Customer
+    participant Boundary as Giao diện Khách - CustomerBoundary (Layer: Boundary)
+    participant Control as Điều phối Đơn hàng - OrderCheckout (Layer: Control)
+    participant Entity as Bộ trữ Tồn kho - FlashSaleInventory (Layer: Entity)
 
-    KhachHang->>UI: Bấm "Xác nhận đặt hàng"
-    UI->>Control: Tiến hành làm thủ tục thanh toán
-    Control->>Entity: Lệnh: Khóa & Trừ bớt Số Vị Trí (Ví dụ: -2 suất)
+    Customer->>Boundary: checkout(inventory, quantity)
+    Boundary->>Control: processOrder(inventory, quantity)
+    Control->>Entity: holdInventory(quantity)
     
-    alt Kho CÒN DƯ HÀNG 
-        Entity-->>Control: Thành công (Trừ vào Database)
-        Control-->>UI: Ra lệnh in Biên lai Hợp lệ
-        UI-->>KhachHang: Màn hình "Cảm ơn quý khách!" 
-    else KHO ĐÃ VỀ SỐ KHÔNG (0)
-        Entity-->>Control: Ném Còi Báo Động (Lỗi Exception)
-        Control-->>UI: Cảnh báo Hết Hàng
-        UI-->>KhachHang: Hiện Panel Lỗi Trắng tay, load lại Giỏ nguyên giá
+    alt Status: IN STOCK
+        Entity-->>Control: return true (Atomic decrement)
+        Control-->>Boundary: orderSuccess: true
+        Boundary-->>Customer: Display "Success" Toast & Invoice
+    else Status: OUT OF STOCK
+        Entity-->>Control: throw IllegalStateException
+        Control-->>Boundary: orderSuccess: false
+        Boundary-->>Customer: Display "Out of Stock" Warning
     end
 ```
 
@@ -175,27 +177,28 @@ sequenceDiagram
 ```
 
 ### 2. Sơ đồ Kịch Bản (Sequence Diagram)
-> **Giải thích:** Tình huống thực tiễn mô tả cách hệ thống chặn "Quyền Lực" của Admin khi vi phạm các giới hạn an toàn.
+> **Kỹ thuật:** Luồng nghiệp vụ cấu hình chiến dịch mới kèm theo các ràng buộc bảo vệ biên lợi nhuận.
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Admin
-    participant UI as Bảng Điều Khiển Admin
-    participant Control as Trình Ghi Chiến Dịch
-    participant Entity as Bộ Kiểm Quản Sinh Object
+    participant Boundary as Giao diện Admin - AdminBoundary (Layer: Boundary)
+    participant Control as Trình ghi Chiến dịch - CampaignManager (Layer: Control)
+    participant Entity as Lõi quy định - FlashSaleCampaign (Layer: Entity)
 
-    Admin->>UI: Kê số giờ & Mức siêu giảm 60%
-    UI->>Control: createCampaign(60%)
-    Control->>Entity: Cố ép hệ thống cho ra khuôn 60%
+    Admin->>Boundary: scheduleCampaign(start, end, discount)
+    Boundary->>Control: createCampaign(start, end, discount)
+    Control->>Entity: new FlashSaleCampaign(start, end, discount)
     
-    alt Bị quá giới hạn 50%
-        Entity-->>Control: Nhào lộn Exception (Quá % cho phép)!
-        Control-->>UI: Thất bại, dừng quá trình lưu trữ
-        UI-->>Admin: Hiện bọt đỏ (Tooltip) "Cấm giảm hơn 50%"
-    else Biên độ tốt chuẩn
-        Entity-->>Control: Định hình khối Campaign mới xong
-        Control-->>UI: Lưu giữ Object thành công
-        UI-->>Admin: "Kế hoạch đã được cài hẹn giờ chạy"
+    alt discountPercent > 50%
+        Entity-->>Control: throw IllegalArgumentException
+        Control-->>Boundary: error: Discount too high
+        Boundary-->>Admin: Show Tooltip "Limit exceeded (50%)"
+    else discountPercent <= 50%
+        Entity-->>Control: object initialized
+        Control-->>Boundary: success: Campaign scheduled
+        Boundary-->>Admin: Display "Campaign created successfully"
     end
 ```
 
@@ -242,29 +245,30 @@ sequenceDiagram
 ```
 
 ### 2. Sơ đồ Kịch Bản (Sequence Diagram)
-> **Giải thích:** Giao diện cần xin 2 số liệu từ máy lõi.
+> **Kỹ thuật:** Luồng truy vấn báo cáo thời gian thực từ Entity Sales.
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Admin
-    participant UI as Bảng Dashboard
-    participant Control as DashboardController
-    participant Entity as Bộ Máy Thống Kê Toán Học
+    participant Boundary as Giao diện Admin - AdminBoundary (Layer: Boundary)
+    participant Control as Bộ máy Thống kê - DashboardController (Layer: Control)
+    participant Entity as Máy quét số liệu - SaleAnalytics (Layer: Entity)
 
-    Admin->>UI: Refresh lại trang nội bộ
-    UI->>Control: Đòi ngay số liệu Tỉ Lệ Tiêu Thụ Hàng
-    Control->>Entity: Cậu chạy hàm cho ra % Bán! (getPercentage)
+    Admin->>Boundary: getAnalyticsReport(analytics)
+    Boundary->>Control: calculateReport(analytics)
+    Control->>Entity: getSoldPercentage()
     
-    alt Dự án chưa nhập tổng kho / Lỗi chia cho Không (0)
-        Entity-->>Control: Văng Exception Tới Tấp
-        Control-->>UI: Cảnh báo "Chưa có thiết lập Tồn kho"
-        UI-->>Admin: Che mờ biểu đồ 0%, rải khung đỏ cảnh báo
-    else Đã có số hợp lệ
-        Entity-->>Control: 80% Tổng Số Lượng
-        Control->>Entity: Xin thêm Tổng Doanh Thu đính kèm
-        Entity-->>Control: 50 triệu VNĐ
-        Control-->>UI: Đóng gói (80%, 50M) gửi bảng hiển thị
-        UI-->>Admin: Vẽ cái Chart Cột rất đẹp bằng JS
+    alt initialTotalProduct == 0
+        Entity-->>Control: throw IllegalStateException
+        Control-->>Boundary: error: Config Missing
+        Boundary-->>Admin: Display Warning "Inventory setting required"
+    else Data Valid
+        Entity-->>Control: return soldPercentage
+        Control->>Entity: getTotalRevenue()
+        Entity-->>Control: return totalRevenue
+        Control-->>Boundary: reportData(perc, rev)
+        Boundary-->>Admin: Render Charts & KPI Stats
     end
 ```
 
@@ -308,32 +312,32 @@ sequenceDiagram
 ```
 
 ### 2. Sơ đồ Kịch Bản (Sequence Diagram)
-> **Giải thích:** Vòng lặp đệ quy trong hệ thống để lục soát, bắt lỗi nếu Admin bỏ sót nhét 1 sản phẩm hết hạn/rỗng vào giỏ Combo.
+> **Kỹ thuật:** Luồng nghiệp vụ đóng gói Combo đa sản phẩm kèm bước kiểm tra tồn kho thành phần (validateStock).
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Admin
-    participant UI as Bảng Tùy Chỉnh Combo
-    participant Control as ComboManager
-    participant Entity as Gói Combo Mới Build
+    participant Boundary as Giao diện Admin - AdminBoundary (Layer: Boundary)
+    participant Control as Ban quản lý Combo - ComboManager (Layer: Control)
+    participant Entity as Gói Combo thực thể - FlashSaleCombo (Layer: Entity)
 
-    Admin->>UI: Đặt tên, thêm Son, thêm Nước Hoa, chọn chiết khấu!
-    UI->>Control: Lập danh sách: Create("Mùa Hè", ds_mat_hang)
-    Control->>Entity: Cố nhồi danh sách vào Class cấu trúc
+    Admin->>Boundary: createCombo(name, products, price, discount)
+    Boundary->>Control: createCombo(name, products, price, discount)
+    Control->>Entity: new FlashSaleCombo(name, products, price, discount)
     
-    loop Xét qua từng mã hàng được thêm
-        Entity->>Entity: Sản vật A còn ko?
-        Entity->>Entity: Sản vật B còn ko?
+    loop Product Validation (Constructor)
+        Entity->>Entity: check product.getAvailableQuantity()
     end
     
-    alt Có Nước Hoa (Tồn Kho = 0)
-        Entity-->>Control: Bắn ngay Lỗi: "Nước hoa hết sạch mà đòi gộp"
-        Control-->>UI: Cancel quá trình đóng danh sách
-        UI-->>Admin: Hất văng bảng đỏ chỉ điểm đúng Nước Hoa đã hết
-    else Tất cả đều hợp lệ
-        Entity-->>Control: Thành lập Box đóng gói Combo thành công
-        Control-->>UI: Cho lưu Combo chung vào CSDL
-        UI-->>Admin: Hiện túi thẻ Combo Mùa Hè ngay bảng chọn
+    alt Component: Out of Stock (quantity <= 0)
+        Entity-->>Control: throw IllegalStateException
+        Control-->>Boundary: error: Member out of stock
+        Boundary-->>Admin: Highlight invalid product in UI
+    else All Components: OK
+        Entity-->>Control: return combo object
+        Control-->>Boundary: success: Combo added to list
+        Boundary-->>Admin: Display Combo in Flash Sale Catalog
     end
 ```
 
