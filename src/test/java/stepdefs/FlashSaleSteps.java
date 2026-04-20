@@ -96,7 +96,7 @@ public class FlashSaleSteps {
         inventory = new FlashSaleInventory("PRODUCT_1", Integer.parseInt(qty));
     }
 
-    @Khi("khách hàng thêm {string} sản phẩm và thanh toán")
+    @Khi("khách hàng chọn {string} sản phẩm và thanh toán")
     public void customerCheckout(String qty) {
         try {
             checkoutResult = customerBoundary.checkout(inventory, Integer.parseInt(qty));
@@ -127,7 +127,7 @@ public class FlashSaleSteps {
         }
     }
 
-    @Thì("hệ thống báo lỗi {string} và cập nhật giỏ hàng về giá gốc")
+    @Thì("hệ thống báo lỗi {string} và cập nhật lại màn hình về giá gốc")
     public void verifyCheckoutError(String errorMsg) {
         assertNotNull(caughtException);
         assertEquals(errorMsg, caughtException.getMessage());

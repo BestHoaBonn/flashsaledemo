@@ -56,13 +56,16 @@ const renderProducts = () => {
                 </div>
             ` : ''}
           </div>
-          <button 
-             class="btn btn-primary buy-btn" 
-             onclick="buyProduct(${product.id})"
-             ${isSoldOutInfo ? 'disabled' : ''}
-          >
-            ${isSoldOutInfo ? 'Hết hàng' : 'Mua Ngay'}
-          </button>
+          <div class="buy-action">
+            <input type="number" id="qty-${product.id}" class="qty-input" value="1" min="1" ${isSoldOutInfo ? 'disabled' : ''}>
+            <button 
+               class="btn btn-primary buy-btn" 
+               onclick="buyProduct(${product.id})"
+               ${isSoldOutInfo ? 'disabled' : ''}
+            >
+              ${isSoldOutInfo ? 'Hết hàng' : 'Mua Ngay'}
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -108,14 +111,19 @@ const updateCountdown = () => {
     countdownInterval = setInterval(tick, 1000);
 };
 
-const updateCartCount = () => {
-    const orders = store.get('orders') || [];
-    const count = orders.reduce((sum, order) => sum + order.quantity, 0);
-    document.getElementById('cart-count').innerText = count;
-}
-
 window.buyProduct = (productId) => {
-    const result = store.buyProduct(productId, 1);
+    const qtyInput = document.getElementById(`qty-${productId}`);
+    const quantity = qtyInput ? parseInt(qtyInput.value) : 1;
+    
+    if (quantity <= 0 || isNaN(quantity)) {
+        const toast = document.getElementById('toast');
+        toast.innerText = 'Số lượng mua phải lớn hơn 0';
+        toast.className = 'toast show error';
+        setTimeout(() => toast.className = 'toast', 3000);
+        return;
+    }
+
+    const result = store.buyProduct(productId, quantity);
     const toast = document.getElementById('toast');
     toast.innerText = result.message;
     toast.className = `toast show ${result.success ? 'success' : 'error'}`;
@@ -126,17 +134,14 @@ window.buyProduct = (productId) => {
 
     if (result.success) {
         renderProducts();
-        updateCartCount();
     }
 };
 
 window.addEventListener('storeUpdated', () => {
     renderProducts();
     updateCountdown();
-    updateCartCount();
 });
 
 // Init
 renderProducts();
 updateCountdown();
-updateCartCount();

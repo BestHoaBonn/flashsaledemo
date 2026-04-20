@@ -93,8 +93,6 @@ Hệ thống sử dụng file [initial_data.json] làm nguồn dữ liệu gốc
     - **When**: Khách nhấn "Thanh toán".
     - **Then**: Hệ thống chặn giao dịch và yêu cầu "Số lượng mua phải lớn hơn 0".
 
-
-
 ---
 
 ### US3: Thiết lập chiến dịch (Dành cho Quản lý)
