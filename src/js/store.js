@@ -139,9 +139,12 @@ class Store {
     if (discountPct > 50) {
       return { success: false, message: 'Mức giảm không được vượt quá 50%' };
     }
-    const today = new Date().toISOString().split('T')[0];
-    const startTime = new Date(`${today}T${startTimeStr}`);
-    const endTime = new Date(`${today}T${endTimeStr}`);
+    const startTime = new Date(startTimeStr);
+    const endTime = new Date(endTimeStr);
+    
+    if (startTime >= endTime) {
+      return { success: false, message: 'Thời gian bắt đầu phải trước thời gian kết thúc' };
+    }
     
     this.set('campaign', {
       isActive: true,

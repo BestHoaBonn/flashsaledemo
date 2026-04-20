@@ -111,10 +111,14 @@ renderComboList();
 
 // Prefill campaign form with active campaign if any for UX
 const currentCampaign = store.getCampaign();
-if (currentCampaign && currentCampaign.isActive) {
+if (currentCampaign) {
+    const toDatetimeLocal = (date) => {
+        const offset = date.getTimezoneOffset() * 60000;
+        return (new Date(date - offset)).toISOString().slice(0, 16);
+    };
     const sDate = new Date(currentCampaign.startTime);
     const eDate = new Date(currentCampaign.endTime);
-    document.getElementById('start-time').value = sDate.toTimeString().substring(0, 5);
-    document.getElementById('end-time').value = eDate.toTimeString().substring(0, 5);
+    document.getElementById('start-time').value = toDatetimeLocal(sDate);
+    document.getElementById('end-time').value = toDatetimeLocal(eDate);
     document.getElementById('discount-pct').value = currentCampaign.discountPercent;
 }

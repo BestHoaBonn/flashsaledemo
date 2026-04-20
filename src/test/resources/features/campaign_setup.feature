@@ -6,7 +6,7 @@ Tính năng: US3 - Thiết lập chiến dịch
 
   Kịch bản: Tạo chiến dịch hợp lệ (Happy Path)
     Cho Quản lý đang ở form tạo chiến dịch
-    Khi nhập thời gian bắt đầu "08:00", kết thúc "12:00" và giá giảm "20%", rồi nhấn "Lưu"
+    Khi nhập thời gian bắt đầu "2026-04-20T08:00", kết thúc "2026-04-20T12:00" và giá giảm "20%", rồi nhấn "Lưu"
     Thì hệ thống lưu thành công và báo "Chiến dịch đã được lên lịch"
 
   Kịch bản: Mức giảm giá vượt quá biên lợi nhuận (Unhappy Path)

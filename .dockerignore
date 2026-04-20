@@ -1,0 +1,14 @@
+node_modules
+target
+dist
+.git
+.gitignore
+.gemini
+.agent
+.codex
+.cursor
+.m2
+*.log
+Dockerfile
+docker-compose.yml
+.dockerignore

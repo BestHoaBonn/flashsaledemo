@@ -43,12 +43,12 @@ Hệ thống được xây dựng theo phương pháp Cắt dọc (Vertical Slic
 ---
 
 ### US3: Thiết lập chiến dịch (Dành cho Quản lý)
-**Use Case / Business Rules**: Là Quản lý cửa hàng, tôi muốn lên lịch thời gian và cấu hình mức giảm giá cho chiến dịch để hệ thống tự động chạy.
+**Use Case / Business Rules**: Là Quản lý cửa hàng, tôi muốn lên lịch Ngày & Giờ và cấu hình mức giảm giá cho chiến dịch để hệ thống tự động chạy.
 
 - **Acceptance Criteria (Tiêu chí chấp nhận) & Các Paths**:
   - **Scenario 3.1 (Happy Path) - Tạo chiến dịch hợp lệ**
     - **Given**: Quản lý đang ở form tạo chiến dịch.
-    - **When**: Nhập thời gian bắt đầu "08:00", kết thúc "12:00" và giá giảm "20%", rồi nhấn "Lưu".
+    - **When**: Nhập ngày giờ bắt đầu "2026-04-20T08:00", kết thúc "2026-04-20T12:00" và giá giảm "20%", rồi nhấn "Lưu".
     - **Then**: Hệ thống lưu thành công và báo "Chiến dịch đã được lên lịch".
   - **Scenario 3.2 (Unhappy Path) - Mức giảm giá vượt quá biên lợi nhuận**
     - **Given**: Chính sách giới hạn giảm tối đa "50%".

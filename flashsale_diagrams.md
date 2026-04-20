@@ -48,12 +48,12 @@ stateDiagram-v2
     [*] --> ChoKichHoat : Khởi tạo chiến dịch
     note left of ChoKichHoat
       Đồng hồ hiện tại
-      SỚM HƠN giờ bắt đầu
+      SỚM HƠN thời điểm bắt đầu
     end note
     
-    ChoKichHoat --> DangDienRa : Tới đúng Giờ G
+    ChoKichHoat --> DangDienRa : Tới đúng thời điểm Sale
     
-    DangDienRa --> DaKetThuc : Đồng hồ vượt qua giờ kết thúc
+    DangDienRa --> DaKetThuc : Vượt qua thời điểm kết thúc
     note right of DaKetThuc
       Hệ thống tự khóa lại.
       Sản phẩm trở về giá gốc.
@@ -213,8 +213,8 @@ sequenceDiagram
  │  [ADMIN] Tạo mới chiến dịch Flash Sale                   │
  ├──────────────────────────────────────────────────────────┤
  │                                                          │
- │  ⏱ Giờ bắt đầu: [ 08:00 AM ▾]                           │
- │  ⏱ Giờ kết thúc: [ 12:00 PM ▾]                           │
+ │  📅 Ngày & Giờ bắt đầu:  [ 2026-04-20 08:00 ▾]         │
+ │  📅 Ngày & Giờ kết thúc: [ 2026-04-20 12:00 ▾]         │
  │                                                          │
  │  🔥 Điền mức sale (%):                                   │
  │   ╭──────────────────────────────────╮                   │

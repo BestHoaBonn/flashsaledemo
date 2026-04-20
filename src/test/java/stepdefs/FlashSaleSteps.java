@@ -143,7 +143,9 @@ public class FlashSaleSteps {
     public void createCampaignForm(String t1, String t2, String discountStr, String btn) {
         double d = Double.parseDouble(discountStr.replace("%", ""));
         try {
-            campaignManager.createCampaign(LocalDateTime.now(), LocalDateTime.now().plusHours(1), d);
+            LocalDateTime start = LocalDateTime.parse(t1);
+            LocalDateTime end = LocalDateTime.parse(t2);
+            campaignManager.createCampaign(start, end, d);
             systemMessage = "Chiến dịch đã được lên lịch";
         } catch (Exception e) {
             caughtException = e;

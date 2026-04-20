@@ -54,12 +54,12 @@ Tính năng **Flash Sale** tạo ra sự khan hiếm chiến lược để thúc
 
 ### 🟢 US3: Thiết lập chiến dịch (Dành cho Quản lý)
 
-> **Business Rules:** Là Quản lý cửa hàng, tôi muốn lên lịch thời gian và cấu hình mức giảm giá cho chiến dịch để hệ thống tự động chạy.
+> **Business Rules:** Là Quản lý cửa hàng, tôi muốn lên lịch Ngày & Giờ và cấu hình mức giảm giá cho chiến dịch để hệ thống tự động chạy.
 
 #### ✅ Acceptance Criteria:
 *   **Scenario 3.1 (Happy Path): Tạo chiến dịch hợp lệ**
     *   **Given** Quản lý đang ở form tạo chiến dịch.
-    *   **When** nhập thời gian bắt đầu "08:00", kết thúc "12:00" và giá giảm "20%", rồi nhấn "Lưu".
+    *   **When** nhập ngày giờ bắt đầu "2026-04-20T08:00", kết thúc "2026-04-20T12:00" và giá giảm "20%", rồi nhấn "Lưu".
     *   **Then** hệ thống lưu thành công và báo "Chiến dịch đã được lên lịch".
 *   **Scenario 3.2 (Unhappy Path): Mức giảm giá vượt quá biên lợi nhuận**
     *   **Given** chính sách giới hạn giảm tối đa "50%".
