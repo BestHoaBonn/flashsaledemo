@@ -1,0 +1,120 @@
+=============================================================================
+             BÁO CÁO PHÂN TÍCH CHUYÊN SÂU (DEEP DIVE ANALYSIS)
+         TÍNH NĂNG US2: XỬ LÝ TỒN KHO VÀ THANH TOÁN (FLASH SALE)
+=============================================================================
+
+1. TẦM QUAN TRỌNG: TẠI SAO US2 LÀ "TRÁI TIM" CỦA DỰ ÁN?
+-----------------------------------------------------------------------------
+Trong một hệ thống Flash Sale, UI (Giao diện) có thể giật lag, tính năng lịch sử 
+đơn hàng có thể chậm 5 phút, nhưng tính năng US2 (Thanh toán & Trừ kho) TUYỆT ĐỐI KHÔNG 
+BAO GIỜ ĐƯỢC SAI LỆCH. Đây là "Nút thắt cổ chai" (Bottleneck) nơi mọi dòng tiền 
+đều đi qua. Rủi ro lớn nhất hệ thống đối mặt là Overselling (Bán lố hàng).
+Ví dụ: Cửa hàng chỉ nhập 10 cây son, nhưng hệ thống ghi nhận 15 người thanh toán
+thành công. 5 người dư ra sẽ kiện cáo, đòi bồi thường, làm hỏng uy tín thương hiệu.
+
+
+2. ÁNH XẠ KIẾN TRÚC BCE BẢO VỆ GIAO DỊCH
+-----------------------------------------------------------------------------
+US2 được chia thành 3 lớp phân quyền vô cùng gắt gao:
+- BOUNDARY (CustomerBoundary.java): 
+  Chỉ làm nhiệm vụ vác Data (productId, quantity) từ môi trường Web (nguy hiểm) giao
+  cho Backend. Tầng này không có quyền quyết định bán hay không.
+
+- CONTROL (OrderCheckout.java):
+  Bộ não điều phối. Xác định xem có tồn tại Inventory cho sản phẩm này không.
+  Nó là "Bảo vệ vòng ngoài", kiểm tra vé trước khi vào cổng.
+
+- ENTITY (FlashSaleInventory.java): 
+  "Két sắt" của hệ thống. Đây là nơi chứa biến `availableQuantity`. Tầng Entity 
+  sở hữu lớp giáp cao nhất: Kiểm duyệt chặt chẽ số lượng < 0 và khóa chốt đồng bộ 
+  trước khi đưa ra quyết định trừ kho cuối cùng.
+
+
+3. BÀI TOÁN RACE CONDITION & TIÊU CHÍ ĐÁNH GIÁ THẮNG (PHÂN TÍCH VI MÔ TỚI LÕI CPU)
+-----------------------------------------------------------------------------
+Nếu 100 người cùng ấn Mua vào đúng Timestamp 12:00:00:000 khi kho chỉ có 1 suất.
+Chuyện gì thực sự xảy ra ở cấp độ Vi xử lý (CPU) và Máy ảo Java (JVM)?
+
+A. CUỘC ĐUA VÀO VÙNG NHỚ TRANH CHẤP (CRITICAL SECTION) VÀ ĐIỂM ĐOẠT KHÓA (LOCK ACQUISITION):
+Điểm "Đoạt Khóa" không phải là một dòng code tường minh như `lock.acquire()`, mà nó được ngôn ngữ Java làm ẩn đi (ngầm định) ngay mép cửa phương thức.
+
+Nó nằm tại file: `src\main\java\com\cosmetics\flashsale\entity\FlashSaleInventory.java` (dòng 26):
+
+    // =================== ĐIỂM ĐOẠT KHÓA (LOCK ACQUISITION) TẠI ĐÂY ===================
+    public synchronized boolean holdInventory(int quantity) { 
+        // Nếu chưa đoạt khóa thành công, không một Thread nào được bước vào dòng này.
+        if (quantity > availableQuantity) { ... }
+        
+        availableQuantity -= quantity;
+        return true;
+    } // <--- UNLOCK (Trả khóa ngầm định khi Thread chạy xong dấu ngoặc nhọn)
+
+Khi bạn đặt `synchronized` ở hàm, JVM sẽ dùng chính đối tượng `FlashSaleInventory` 
+làm một "Ổ khóa" (Monitor Object). Mọi đối tượng trong Java đều có phần Header, và 
+trong Header có 1 vùng nhớ cấu trúc dữ liệu gọi là "Mark Word".
+
+B. TRẬN CHIẾN TẠI "MARK WORD" VÀ LỆNH ASSEMBLY CÁP THẤP:
+- 100 luồng (Threads) từ Tomcat/Bộ định tuyến Website lao đến cùng lúc.
+- Ở cấp độ CPU, các lõi (Cores/Hyper-threads) sẽ thi nhau gọi một lệnh phần cứng 
+  là kiến trúc "CAS" (Compare-And-Swap) ở vùng hợp ngữ (Assembly Level).
+- **TIÊU CHÍ ĐÁNH GIÁ THẮNG (WINNING CRITERIA)**: Chẳng có danh sách khách VIP nào cả!
+  Lõi CPU nào thực thi lệnh CAS đầu tiên thành công và ghi được chính cái ID của 
+  Thread của nó vào vùng "Mark Word" (đổi trạng thái từ 'Unlocked' sang 'Locked' 
+  hay 'Fat Lock') -> CPU xử lý ngắt đó nhanh nhất Nano-giây thắng!
+
+C. VÒNG ĐỜI CỦA 100 THREADS SAU TÍCH TẮC TRANH GIÀNH:
+- [SỐ 1 - NGƯỜI CHIẾN THẮNG]: Có trạng thái là RUNNABLE. Thread này ung dung vào 
+  thực thi code kiểm tra và trừ kho (1 - 1 = 0). Dù nó có tạm ngưng đi chăng nữa, 
+  Hệ Điều Hành (OS) cũng không cho phép ai cướp quyền vì nó đang giữ chìa khóa 
+  "Monitor". Trừ xong, nó bôi xóa tên mình khỏi "Mark Word" và đánh thức các Thread khác.
+  
+- [99 KẺ THẤT BẠI - CHẬM TÍCH TẮC]: Do lệnh CAS thất bại, JVM bắt 99 Thread này 
+  chuyển sang trạng thái BLOCKED. Hệ điều hành (OS Thread Scheduler) sẽ thực hiện 
+  quy trình Context Switch đắt đỏ: Tước lấy CPU từ chúng, bế tất cả vứt vào 
+  "Entry Set" (Khu vực xếp hàng ngục tối). 
+
+D. HIỆU ỨNG TẦM NHÌN CPU CACHE (CPU VISIBILITY):
+- Khi Người Thắng mở khóa, Hệ điều hành ngẫu nhiên đánh thức 1 kẻ trong "Entry Set" 
+  chuyển nó sang RUNNABLE. 
+- Kẻ này mừng rỡ vào phòng, đọc đk: `if (quantity > availableQuantity)`.
+- *Tại sao nó ngay lập tức biết `availableQuantity` đã bị đổi thành 0 thành công?* 
+  Trong Java, cơ chế mở khóa `synchronized` ép lõi CPU vừa chạy phải "Flush" (bơm xả) 
+  mọi dữ liệu trong bộ đệm siêu tốc (L1/L2 Cache) xuống RAM tổng. Đồng thời kẻ 
+  chạy tiếp theo cũng ép phải đọc làm mới ("Refresh") trực tiếp từ RAM lên chứ 
+  không được dùng cache cũ. Kết quả: Nó nhìn thấy con số thật là 0.
+- Nó ném ra `IllegalStateException: Sản phẩm đã hết suất`.
+- Dây chuyền lặp lại, 98 kẻ còn lại lần lượt vào, nhìn thấy 0, ném lỗi và ra về.
+
+=> KẾT LUẬN: Đánh giá thắng phụ thuộc vào Hardware & OS Scheduling tranh chấp Mark Word. 
+Chỉ đúng 1 đơn lọt, Hệ thống vĩnh viễn không bao giờ âm dẫu 1 triệu người.
+
+
+4. CÁC HƯỚNG NÂNG CẤP KIẾN TRÚC LÊN TẦM BIG TECH (TIẾP TỤC SCALE)
+-----------------------------------------------------------------------------
+Từ khóa "synchronized" của Java hiện tại là quá đủ cho 1 máy chủ (Single Server).
+Tuy nhiên, nếu Mỹ phẩm lên đỉnh Top Trending, công ty thuê 10 máy chủ (Cluster) để 
+chạy song song, "synchronized" sẽ vô dụng (vì khóa ở máy 1 không cản được lệnh chạy 
+trên máy 2).
+
+Nếu mở rộng, ta phải ứng dụng các tiêu chí sau:
+
+A. Optimistic Locking (Khóa Lạc Quan ở CSDL):
+   Đưa quyền sinh sát xuống SQL DB:
+   `UPDATE inventory SET qty = qty - 1 WHERE id = 'P1' AND qty >= 1;`
+   Câu lệnh này là Nguyên Tử (Atomic). Nếu 10 máy chủ đẩy lệnh vào DB, DB sẽ tự phân xử.
+
+B. Hàng Đợi (Message Queue) để "Câu giờ":
+   Không bắt khách hàng đợi Server trừ kho trực tiếp, hệ thống dùng RabbitMQ / Kafka.
+   Phát "Phiếu xếp hàng" (Ticket) cho 10.000 người, rồi có 1 máy worker túc tắc đi trừ kho
+   từ 1 đến 10. Ai trúng thì báo "Thành công", ai trễ thì báo "Hết hàng". 
+   Ưu điểm: Server không bao giờ sập vì quá tải.
+
+C. Phân loại Khách Hàng (VIP Tiering):
+   Tiêu chí đánh giá thắng không chỉ nằm ở "Tốc độ mạng" mà nằm ở "Uy tín". Tránh 
+   hacker dùng BOT giành hàng. Các tài khoản chi tiêu trên 100 triệu sẽ đi vào cổng 
+   khác với ưu tiên cao hơn để chốt đơn nhanh hơn hàng chục lần so với tài khoản clone.
+
+=============================================================================
+KẾT LUẬN: US2 tuy có vài chục dòng code nhưng lại quyết định sự sống còn của 
+cửa hàng trực tuyến. Nắm vững việc bẻ khóa các trường hợp bất đồng bộ (Concurrency) 
+chính là vũ khí tối thượng của dự án này.

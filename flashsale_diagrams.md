@@ -49,28 +49,7 @@ sequenceDiagram
     * **Temporal Validation**: Hệ thống sử dụng thời gian của máy chủ (Server-side) để ngăn chặn việc gian lận thời gian từ phía Client.
 4. **Kết quả trả về (Output):** Trả về giá đã được tính toán (Calculated Price) kèm theo cờ trạng thái (`isActive`) để lớp Boundary quyết định việc render đồng hồ đếm ngược.
 
-### 3. Sơ đồ Trạng Thái (State Diagram)
-> **Giải thích:** Vòng đời của một chiến dịch đi từ lúc ngủ đông đến lúc tự đào thải.
-```mermaid
-stateDiagram-v2
-    [*] --> ChoKichHoat : Khởi tạo chiến dịch
-    note left of ChoKichHoat
-      Đồng hồ hiện tại
-      SỚM HƠN thời điểm bắt đầu
-    end note
-    
-    ChoKichHoat --> DangDienRa : Tới đúng thời điểm Sale
-    
-    DangDienRa --> DaKetThuc : Vượt qua thời điểm kết thúc
-    note right of DaKetThuc
-      Hệ thống tự khóa lại.
-      Sản phẩm trở về giá gốc.
-    end note
-    
-    DaKetThuc --> [*]
-```
-
-### 4. Thiết kế Cấu trúc file & Màn hình hiển thị
+### 3. Thiết kế Cấu trúc file & Màn hình hiển thị
 > Nơi các kỹ sư lưu trữ File và Giao diện phác thảo tương ứng.
 
 ```text
@@ -420,10 +399,11 @@ sequenceDiagram
  │                                                          │
  │ 🚫 Lỗi kẹt kho: Thằng "Nước hoa Chanel" rỗng rồi sếp ơi! │
  ╰──────────────────────────────────────────────────────────╯
+```
 
 ---
 
-## 🟢 US6: Thêm mới và Xóa Sản phẩm khỏi Chiến dịch Flash Sale
+## 🟢 US6: Quản lý Sản phẩm Flash Sale
 
 ### 1. Kiến trúc BCE
 > **Giải thích:** Quản lý thao tác danh sách sản phẩm, Controller gửi yêu cầu tới Lõi quản lý sản phẩm để cập nhật danh mục khuyến mãi.
@@ -437,7 +417,7 @@ sequenceDiagram
 ```
 
 ### 2. Sơ đồ Tuần Tự (Sequence Diagram)
-> **Kỹ thuật:** Luồng xử lý thêm/xóa sản phẩm vào danh mục sale hiện hành.
+> **Kỹ thuật:** Luồng xử lý thêm sản phẩm vào danh mục sale hiện hành.
 
 ```mermaid
 sequenceDiagram
@@ -463,9 +443,45 @@ sequenceDiagram
         end
 ```
 
+**Chi tiết luồng dữ liệu (Data Flow):**
+1. **Dữ liệu đầu vào (Input Artifacts):** ID Sản phẩm, Giá Sale, và Giới hạn Tồn kho.
+2. **Tiến trình xử lý (Technical Processing):**
+    * `AdminBoundary` gửi yêu cầu cho `ProductManagerController`.
+    * Controller uỷ nhiệm cho Entity `FlashSaleProductList` để thêm đối tượng.
+    * Entity kiểm tra tồn tại (Unique Constraint Checks) trước khi thêm vào mảng.
+3. **Đặc tính kỹ thuật (Technical Specs):**
+    * **Data Integrity**: Ngăn chặn tình trạng trùng lặp sản phẩm trong một Campaign để tránh lỗi trừ kho và hiển thị kép.
+4. **Kết quả (Result):** Sản phẩm được đưa lên quầy (hoặc ném lỗi cảnh báo).
+
+### 3. Thiết kế Cấu trúc file & Màn hình hiển thị
+```text
+📁 CẤU TRÚC FOLDER:
+ src/
+  ╰─ main/java/.../
+      ├─ boundary/     ->  AdminBoundary.html (Giao diện Quản lý SP)
+      ├─ control/      ->  ProductManagerController.java (Đóng vai trò điều hướng)
+      ╰─ entity/       ->  FlashSaleProductList.java (Danh sách quản lý cốt lõi)
+
+🖥️ MÀN HÌNH WIREFRAME:
+ ╭──────────────────────────────────────────────────────────╮
+ │  [ADMIN] Quản lý Sản phẩm Flash Sale                     │
+ ├──────────────────────────────────────────────────────────┤
+ │                                                          │
+ │  Chọn sản phẩm:  [ Son Dior Lip Glow ▾ ]                 │
+ │  Giá sau Sale:   [ 800.000 ] VNĐ                         │
+ │  Số lượng giới hạn:[ 50 ] Suất                           │
+ │                                                          │
+ │  [ + THÊM VÀO CHIẾN DỊCH ]                               │
+ │                                                          │
+ │  DANH SÁCH HIỆN CÓ:                                      │
+ │  1. Son MAC (Giá sale: 520k - Tồn: 10)  [Xóa]            │
+ │  2. Kem Chống Nắng (Giá sale: 200k)     [Xóa]            │
+ ╰──────────────────────────────────────────────────────────╯
+```
+
 ---
 
-## 🟢 US7: Phân loại sản phẩm theo danh mục
+## 🟢 US7: Phân loại danh mục
 
 ### 1. Kiến trúc BCE
 > **Giải thích:** Khách hàng chọn bộ lọc, Control truy vấn danh mục từ Entity và trả về danh sách đã được lọc.
@@ -473,8 +489,8 @@ sequenceDiagram
   [ BOUNDARY / GIAO DIỆN ]                ( CONTROL / XỬ LÝ )                 { ENTITY / LÕI NGHIỆP VỤ }
   
   ╔════════════════════╗               ┌────────────────────┐               ⟪──────────────────────⟫
-  ║ TRANG CHỦ / BỘ LỌC ║ = Chọn DM ===> │ BỘ LỌC DANH MỤC    │ === Truy vấn =>│ SẢN PHẨM & DANH MỤC  │
-  ║ (CustomerBoundary) ║               │  (ProductCatalog)  │               │  (FlashSaleProduct)  │
+  ║ TRANG CHỦ / BỘ LỌC ║ = Chọn DM ===> │ BỘ LỌC DANH MỤC    │ === Truy vấn =>│ DANH SÁCH DANH MỤC   │
+  ║ (CustomerBoundary) ║               │  (ProductCatalog)  │               │  (ProductCategory)   │
   ╚════════════════════╝ <== List SP == └────────────────────┘ <== Dữ liệu ==⟪──────────────────────⟫
 ```
 
@@ -487,59 +503,132 @@ sequenceDiagram
     actor Customer
     participant Boundary as Giao diện Khách - CustomerBoundary (Layer: Boundary)
     participant Control as Trình quản lý SP - ProductCatalog (Layer: Control)
-    participant Entity as Lõi sản phẩm - FlashSaleProduct (Layer: Entity)
+    participant Entity as Lõi Phân loại - ProductCategory (Layer: Entity)
 
     Customer->>Boundary: filterByCategory(categoryName)
     Boundary->>Control: getProductsByCategory(categoryName)
-    Control->>Entity: findByCategory(categoryName)
+    Control->>Entity: filter(categoryName)
     Entity-->>Control: List<Products>
     
     alt Danh sách rỗng
-        Control->>Entity: getTopSelling()
-        Entity-->>Control: List<TopSelling>
-        Control-->>Boundary: suggest(TopSelling)
+        Control->>Entity: getBestSellers()
+        Entity-->>Control: List<BestSelling>
+        Control-->>Boundary: suggest(BestSelling)
+        Boundary-->>Customer: Hiển thị gợi ý "Sản phẩm Bán Chạy"
     else Có sản phẩm
-        Control-->>Boundary: renderedProducts
+        Control-->>Boundary: returnedProducts
+        Boundary-->>Customer: Hiển thị danh sách SP theo Mục
     end
-    Boundary-->>Customer: Hiển thị danh sách hoặc gợi ý
+```
+
+**Chi tiết luồng dữ liệu (Data Flow):**
+1. **Dữ liệu đầu vào (Input Artifacts):** Tên/ID Danh mục mà khách muốn lọc (`categoryName`).
+2. **Tiến trình xử lý (Technical Processing):**
+    * Request từ Bộ lọc UI tiến thẳng tới `ProductCatalog`.
+    * Control tiến hành yêu cầu Entity `ProductCategory` trả về các món thỏa mãn điều kiện.
+    * Gặp Fallback logic: Nếu rỗng, yêu cầu Entity trả lại danh sách thay thế.
+3. **Đặc tính kỹ thuật (Technical Specs):**
+    * **Fallback Mechanism (Cơ chế Phòng hờ)**: Thuật toán không bao giờ trả về màn hình trắng tinh, gây trải nghiệm xấu. Áp dụng Fallback để đẩy SP bán chạy ra hỗ trợ Sale.
+4. **Kết quả (Result):** Một mảng sản phẩm tương ứng, kèm theo chỉ báo UI thích hợp.
+
+### 3. Thiết kế Cấu trúc file & Màn hình hiển thị
+```text
+📁 CẤU TRÚC FOLDER:
+ src/
+  ╰─ main/java/.../
+      ├─ boundary/     ->  CustomerBoundary.html (Các Tab Danh mục)
+      ├─ control/      ->  ProductCatalog.java (Điều khiển lọc Filter)
+      ╰─ entity/       ->  ProductCategory.java (Logic nhận diện danh mục)
+
+🖥️ MÀN HÌNH WIREFRAME:
+ ╭──────────────────────────────────────────────────────────╮
+ │  [🛍️] TRANG CHỦ MUA SẮM                                  │
+ ├──────────────────────────────────────────────────────────┤
+ │                                                          │
+ │  Bộ Lọc: [Tất Cả] [Son Môi] [Nước Hoa] [Kem Dưỡng]       │
+ │                                                          │
+ │  ╔══════════════════════════════════════════════════╗    │
+ │  ║ ⚠️ Danh mục Nước Hoa hiện đang trống.             ║    │
+ │  ║ 💡 Nhưng bạn có thể xem các Sản Phẩm Bán Chạy 👇  ║    │
+ │  ╚══════════════════════════════════════════════════╝    │
+ │                                                          │
+ │  [ SP Bán Chạy 1 ]   [ SP Bán Chạy 2 ]   [ SP Bán Chạy 3]│
+ ╰──────────────────────────────────────────────────────────╯
 ```
 
 ---
 
-## 🟢 US8: Lịch sử đơn hàng chi tiết
+## 🟢 US8: Lịch sử đơn hàng và Thống kê tiết kiệm
 
 ### 1. Kiến trúc BCE
-> **Giải thích:** Khách hàng xem lại các giao dịch đã thực hiện trong quá khứ.
+> **Giải thích:** Khách hàng xem lại các giao dịch đã thực hiện trong quá khứ và tổng kết tiền lời.
 ```text
   [ BOUNDARY / GIAO DIỆN ]                ( CONTROL / XỬ LÝ )                 { ENTITY / LÕI NGHIỆP VỤ }
   
   ╔════════════════════╗               ┌────────────────────┐               ⟪──────────────────────⟫
   ║ MỤC LỊCH SỬ MUA    ║ = Yêu cầu ===> │ BỘ QUẢN LÝ ĐƠN     │ === Truy vấn =>│ KHO ĐƠN HÀNG ĐÃ LƯU  │
-  ║ (CustomerBoundary) ║               │ (OrderManager)     │               │    (OrderHistory)    │
+  ║ (CustomerBoundary) ║               │(OrderHistoryManager)│               │    (OrderHistory)    │
   ╚════════════════════╝ <== Chi tiết = └────────────────────┘ <== Dữ liệu ==⟪──────────────────────⟫
 ```
 
 ### 2. Sơ đồ Tuần Tự (Sequence Diagram)
+> **Kỹ thuật:** Luồng tính toán tiền tiết kiệm (Saved Amount) cho người dùng.
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Customer
     participant Boundary as Giao diện Khách - CustomerBoundary (Layer: Boundary)
-    participant Control as Quản lý đơn - OrderManager (Layer: Control)
+    participant Control as Quản lý đơn - OrderHistoryManager (Layer: Control)
     participant Entity as Lõi dữ liệu - OrderHistory (Layer: Entity)
 
-    Customer->>Boundary: getOrderHistory()
-    Boundary->>Control: getOrdersByCustomer()
+    Customer->>Boundary: viewOrderHistory()
+    Boundary->>Control: getCustomerOrders()
     Control->>Entity: fetchOrders()
     Entity-->>Control: List<Orders>
     
     alt Không có đơn hàng
-        Control-->>Boundary: empty: suggest 'Mua ngay'
-        Boundary-->>Customer: Hiển thị nút CTA
+        Control-->>Boundary: emptyList
+        Boundary-->>Customer: Hiển thị "Bạn chưa mua gì"
     else Có đơn hàng
-        Control-->>Boundary: List<OrderDetails>
-        Boundary-->>Customer: Render bảng lịch sử & Tiền tiết kiệm
+        Control->>Entity: calculateTotalSavings()
+        Entity-->>Control: totalSavedAmount (VND)
+        Control-->>Boundary: List<Orders> + totalSavedAmount
+        Boundary-->>Customer: Render bảng lịch sử & Nút khoe "Tiết kiệm"
     end
 ```
 
+**Chi tiết luồng dữ liệu (Data Flow):**
+1. **Dữ liệu đầu vào (Input Artifacts):** Yêu cầu xem lịch sử.
+2. **Tiến trình xử lý (Technical Processing):**
+    * Request từ Khách hàng vào Control `OrderHistoryManager`.
+    * Control yêu cầu Entity cung cấp danh sách.
+    * Control gọi hàm đặc biệt `calculateTotalSavings` để tính chênh lệch giá Gốc - giá Sale của mọi đơn.
+3. **Đặc tính kỹ thuật (Technical Specs):**
+    * **Gamification Logic**: Việc tính tiền tiết kiệm đóng vai trò giữ chân người dùng (Gamification) - làm họ thấy "Lời" khi mua sắm. Logic này xử lý nhanh trong RAM.
+4. **Kết quả (Result):** Danh sách hóa đơn + Tổng số tiền hời.
+
+### 3. Thiết kế Cấu trúc file & Màn hình hiển thị
+```text
+📁 CẤU TRÚC FOLDER:
+ src/
+  ╰─ main/java/.../
+      ├─ boundary/     ->  CustomerBoundary.html (Giao diện lịch sử)
+      ├─ control/      ->  OrderHistoryManager.java (Đọc đơn Hàng)
+      ╰─ entity/       ->  OrderHistory.java (Biên lai lưu trữ)
+
+🖥️ MÀN HÌNH WIREFRAME:
+ ╭──────────────────────────────────────────────────────────╮
+ │  📋 LỊCH SỬ ĐƠN HÀNG CỦA BẠN                             │
+ ├──────────────────────────────────────────────────────────┤
+ │                                                          │
+ │  1. Son MAC Ruby Woo (2 món x 520.000) = 1.040.000       │
+ │  2. Kem chống nắng (1 món x 200.000)   = 200.000         │
+ │                                                          │
+ │  --------------------------------------------------      │
+ │  💰 TỔNG SỐ TIỀN BẠN ĐÃ TIẾT KIỆM ĐƯỢC NHỜ FLASH SALE:   │
+ │                                                          │
+ │                 [ 🔥 560.000 VNĐ 🔥 ]                    │
+ │                                                          │
+ ╰──────────────────────────────────────────────────────────╯
 ```
