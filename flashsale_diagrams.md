@@ -128,7 +128,7 @@ sequenceDiagram
 3. **Đặc tính kỹ thuật (Technical Specs):**
     * **Thread-safety**: Sử dụng cơ chế khóa đồng bộ (`synchronized`) đảm bảo tính nguyên tử (Atomicity), ngăn chặn tình trạng thất thoát kho hoặc bán quá mức (Overselling) khi có hàng nghìn người cùng mua một lúc.
     * **Fail-fast Logic**: Nếu kho không đủ, hệ thống ném `IllegalStateException` ngay lập tức để ngắt tiến trình (Interrupt process), đảm bảo không tạo đơn hàng khống.
-4. **Đầu ra (Output):** Trả về trạng thái giao dịch thành công (Boolean) và cập nhật số dư kho thực tế trên RAM.
+
 
 ### 3. Thiết kế Cấu trúc file & Màn hình hiển thị
 ```text
